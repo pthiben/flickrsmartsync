@@ -111,17 +111,18 @@ class Sync(object):
             folder = photo_set.replace(self.cmd_args.sync_path, '')
             display_title = self.remote.get_custom_set_title(photo_set)
             logger.info('Getting photos in set [%s]' % display_title)
-            photos = map(str.upper, self.remote.get_photos_in_set(folder))
+            photos = self.remote.get_photos_in_set(folder)
             logger.info('Found %s photos' % len(photos))
 
             for photo, file_stat in sorted(photo_sets[photo_set]):
+                photo = photo.upper()
                 # Adds skips
                 if self.cmd_args.ignore_images and photo.split('.').pop().lower() in EXT_IMAGE:
                     continue
                 elif self.cmd_args.ignore_videos and photo.split('.').pop().lower() in EXT_VIDEO:
                     continue
 
-                if (photo.upper()) in photos or self.cmd_args.is_windows and photo.replace(os.sep, '/') in photos:
+                if photo in photos or self.cmd_args.is_windows and photo.replace(os.sep, '/') in photos:
                     logger.info('Skipped [%s] already exists in set [%s]' % (photo, display_title))
                 else:
                     logger.info('Uploading [%s] to set [%s]' % (photo, display_title))

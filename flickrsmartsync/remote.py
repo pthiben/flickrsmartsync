@@ -125,10 +125,10 @@ class Remote(object):
 
                         original = filter(lambda s: s['label'].startswith('Video Original') and s['media'] == 'video', sizes['sizes']['size'])
                         if original:
-                            photos[title] = original.pop()['source']
+                            photos[title.upper()] = original.pop()['source']
                             
                     else:
-                        photos[title] = photo['url_o'] if get_url else photo['id']
+                        photos[title.upper()] = photo['url_o'] if get_url else photo['id']
 
         return photos
 

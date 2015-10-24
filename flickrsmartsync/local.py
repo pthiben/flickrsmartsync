@@ -46,7 +46,7 @@ class Local(object):
                             photo_sets.setdefault(r, [])
                             file_path = os.path.join(r, file)
                             file_stat = os.stat(file_path)
-                            photo_sets[r].append((file, file_stat))
+                            photo_sets[r].append((file.upper(), file_stat))
 
         if skips_root:
             logger.warn('To avoid disorganization on flickr sets root photos are not synced, skipped these photos: %s' % skips_root)
