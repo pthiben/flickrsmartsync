@@ -153,20 +153,26 @@ class Remote(object):
             for current_set in sets['photosets']['photoset']:
                 # Make sure it's the one from backup format
                 desc = html_parser.unescape(current_set['description']['_content'])
+                forceUpdateDesc = False
+                if not desc:
+                    desc = html_parser.unescape(current_set['title']['_content'])
+                    forceUpdateDesc = True
+
                 desc = desc.encode('utf-8') if isinstance(desc, unicode) else desc
                 if desc:
                     self.photo_sets_map[desc] = current_set['id']
                     title = self.get_custom_set_title(self.cmd_args.sync_path + desc)
-                    if self.cmd_args.update_custom_set and title != current_set['title']['_content']:
-                        update_args = self.args.copy()
-                        update_args.update({
-                            'photoset_id': current_set['id'],
-                            'title': title,
-                            'description': desc
-                        })
-                        logger.info('Updating custom title [%s]...' % title)
-                        json.loads(self.api.photosets_editMeta(**update_args))
-                        logger.info('done')
+                    if self.cmd_args.update_custom_set:
+                        if title != current_set['title']['_content'] or forceUpdateDesc:
+                            update_args = self.args.copy()
+                            update_args.update({
+                                'photoset_id': current_set['id'],
+                                'title': title,
+                                'description': desc
+                            })
+                            logger.info('Updating custom title [%s]...' % title)
+                            json.loads(self.api.photosets_editMeta(**update_args))
+                            logger.info('done')
 
     def upload(self, file_path, photo, folder):
         upload_args = {
