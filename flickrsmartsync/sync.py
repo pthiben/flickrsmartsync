@@ -4,7 +4,7 @@ import logging
 logger = logging.getLogger("flickrsmartsync")
 
 EXT_IMAGE = ('jpg', 'png', 'jpeg', 'gif', 'bmp')
-EXT_VIDEO = ('avi', 'wmv', 'mov', 'mp4', '3gp', 'ogg', 'ogv', 'mts')
+EXT_VIDEO = ('avi', 'wmv', 'mov', 'mp4', '3gp', 'ogg', 'ogv', 'mts', 'mpg')
 
 
 class Sync(object):
@@ -105,25 +105,61 @@ class Sync(object):
                 if self.cmd_args.custom_set_debug and raw_input('Is this your expected custom set titles (y/n):') != 'y':
                     exit(0)
 
+        prefixes = self.cmd_args.add_photo_prefix.split(',') if self.cmd_args.add_photo_prefix else {}
+
         # Loop through all local photo set map and
         # upload photos that does not exists in online map
         for photo_set in sorted(photo_sets):
             folder = photo_set.replace(self.cmd_args.sync_path, '')
             display_title = self.remote.get_custom_set_title(photo_set)
             logger.info('Getting photos in set [%s]' % display_title)
-            photos = self.remote.get_photos_in_set(folder)
-            logger.info('Found %s photos' % len(photos))
+            photos_remote = self.remote.get_photos_in_set(folder)
+            logger.info('Found %s photos' % len(photos_remote))
 
             for photo, file_stat in sorted(photo_sets[photo_set]):
-                photo = photo.upper()
+                photo_lowercase = photo.lower()
+                photo_lowercase_no_extension = os.path.splitext(photo_lowercase)[0]
+
                 # Adds skips
                 if self.cmd_args.ignore_images and photo.split('.').pop().lower() in EXT_IMAGE:
                     continue
                 elif self.cmd_args.ignore_videos and photo.split('.').pop().lower() in EXT_VIDEO:
                     continue
 
-                if photo in photos or self.cmd_args.is_windows and photo.replace(os.sep, '/') in photos:
-                    logger.info('Skipped [%s] already exists in set [%s]' % (photo, display_title))
+                # try to detect if the file was previously uploaded, and if it was but with incomplete information
+                # (missing extension for MPEG files for instance)
+                was_uploaded = False
+                needs_filename_update = False
+                photo_id = ""
+
+                if prefixes:
+                    for photo_prefix in prefixes:
+                        if not photo_prefix in photo:
+                            continue
+                        photo_lowercase_stripped=photo_lowercase.replace(photo_prefix.lower(), "")
+                        photo_lowercase_no_extension_stripped=photo_lowercase_no_extension.replace(photo_prefix.lower(), "")
+                        if photo_lowercase_stripped in photos_remote:
+                            self.remote.update_name(photos_remote[photo_lowercase_stripped], photo_lowercase_stripped, photo, display_title)
+                            break
+                        elif photo_lowercase_no_extension_stripped in photos_remote:
+                            self.remote.update_name(photos_remote[photo_lowercase_no_extension_stripped], photo_lowercase_no_extension_stripped, photo, display_title)
+                            break
+                    continue
+
+                needs_filename_update = False
+
+                if (photo_lowercase in photos_remote) or (self.cmd_args.is_windows and photo_lowercase.replace(os.sep, '/') in photos_remote):
+                    was_uploaded = True
+                    photo_id = photos_remote[photo_lowercase]
+                elif photo_lowercase_no_extension in photos_remote:
+                    was_uploaded = True
+                    needs_filename_update = True
+                    photo_id = photos_remote[photo_lowercase_no_extension]
+
+
+                if was_uploaded or self.cmd_args.add_photo_prefix:
+                    if needs_filename_update and photo_id:
+                        self.remote.update_name(photo_id, photo_lowercase_no_extension, photo, display_title)
                 else:
                     logger.info('Uploading [%s] to set [%s]' % (photo, display_title))
                     if file_stat.st_size >= 1073741824:
@@ -132,5 +168,5 @@ class Sync(object):
                     file_path = os.path.join(photo_set, photo)                        
                     photo_id = self.remote.upload(file_path, photo, folder)
                     if photo_id:
-                        photos[photo] = photo_id
+                        photos_remote[photo] = photo_id
                         

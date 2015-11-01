@@ -72,17 +72,21 @@ class Remote(object):
             photosets_args.update({'primary_photo_id': photo_id,
                                    'title': custom_title,
                                    'description': folder})
-            photo_set = json.loads(self.api.photosets_create(**photosets_args))
-            self.photo_sets_map[folder] = photo_set['photoset']['id']
+            if not self.cmd_args.dry_run:
+                photo_set = json.loads(self.api.photosets_create(**photosets_args))
+                self.photo_sets_map[folder] = photo_set['photoset']['id']
             logger.info('Created set [%s] and added photo' % custom_title)
         else:
             photosets_args = self.args.copy()
             photosets_args.update({'photoset_id': self.photo_sets_map.get(folder), 'photo_id': photo_id})
-            result = json.loads(self.api.photosets_addPhoto(**photosets_args))
-            if result.get('stat') == 'ok':
-                logger.info('Successfully added photo to %s' % folder)
+            if not self.cmd_args.dry_run:
+                result = json.loads(self.api.photosets_addPhoto(**photosets_args))
+                if result.get('stat') == 'ok':
+                    logger.info('Successfully added photo to %s' % folder)
+                else:
+                    logger.error(result)
             else:
-                logger.error(result)
+                logger.info('Successfully added photo to %s' % folder)
 
     # Get photos in a set
     def get_photos_in_set(self, folder, get_url=False):
@@ -111,11 +115,6 @@ class Remote(object):
                     # add missing extension if not present (take a guess as api original_format argument not working)
                     split = title.split(".")
                     # assume valid file extension is less than or equal to 5 characters and not all digits
-                    if len(split) < 2 or len(split[-1]) > 5 or split[-1].isdigit():
-                        if photo.get('media') == 'video':
-                            title += ".mp4"
-                        else:
-                            title += ".jpg"
                     if get_url and photo.get('media') == 'video':
                         photo_args = self.args.copy()
                         photo_args['photo_id'] = photo['id']
@@ -125,10 +124,10 @@ class Remote(object):
 
                         original = filter(lambda s: s['label'].startswith('Video Original') and s['media'] == 'video', sizes['sizes']['size'])
                         if original:
-                            photos[title.upper()] = original.pop()['source']
+                            photos[title.lower()] = original.pop()['source']
                             
                     else:
-                        photos[title.upper()] = photo['url_o'] if get_url else photo['id']
+                        photos[title.lower()] = photo['url_o'] if get_url else photo['id']
 
         return photos
 
@@ -171,7 +170,8 @@ class Remote(object):
                                 'description': desc
                             })
                             logger.info('Updating custom title [%s]...' % title)
-                            json.loads(self.api.photosets_editMeta(**update_args))
+                            if not self.cmd_args.dry_run:
+                                json.loads(self.api.photosets_editMeta(**update_args))
                             logger.info('done')
 
     def upload(self, file_path, photo, folder):
@@ -192,6 +192,9 @@ class Remote(object):
             # (Optional) Set to 1 to keep the photo in global search results, 2 to hide from public searches.
             'hidden': 2
         }
+
+        if self.cmd_args.dry_run:
+            return u'0'
 
         for i in range(RETRIES):
             try:
@@ -214,3 +217,13 @@ class Remote(object):
                 logger.warning("Retrying download of %s after error: %s" % (path, e))
         # failed many times
         logger.error("Failed to download %s after %d retries" % (path, RETRIES))
+
+    def update_name(self, photo_id, old_filename, photo_filename, display_title):
+        update_args = self.args.copy()
+        update_args.update({
+            'photo_id': photo_id,
+            'title': photo_filename
+        })
+        logger.info('[%s] -> [%s] in set [%s]' % (old_filename, photo_filename, display_title))
+        if not self.cmd_args.dry_run:
+            json.loads(self.api.photos_setMeta(**update_args))

@@ -25,7 +25,9 @@ def main():
     parser = argparse.ArgumentParser(description='Sync current folder to your flickr account.')
     parser.add_argument('--monitor', action='store_true', 
                         help='starts a daemon after sync for monitoring')
-    parser.add_argument('--starts-with', type=str, 
+    parser.add_argument('--dry-run', action='store_true',
+                        help='do not perform any remote action')
+    parser.add_argument('--starts-with', type=str,
                         help='only sync that path starts with this text, e.g. "2015/06"')
     parser.add_argument('--download', type=str, 
                         help='download the photos from flickr, specify a path or . for all')
@@ -51,7 +53,9 @@ def main():
                         help='for testing your custom sets, asks for confirmation when creating an album on flickr')
     parser.add_argument('--username', type=str, 
                         help='token username')  # token username argument for api
-    parser.add_argument('--keyword', action='append', type=str, 
+    parser.add_argument('--add-photo-prefix', type=str,
+                        help='Add a specific prefix to the remote files whose local files have that prefix')
+    parser.add_argument('--keyword', action='append', type=str,
                         help='only upload files matching this keyword')
 
     args = parser.parse_args()
