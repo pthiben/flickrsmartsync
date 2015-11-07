@@ -111,12 +111,21 @@ class Sync(object):
         # upload photos that does not exists in online map
         for photo_set in sorted(photo_sets):
             folder = photo_set.replace(self.cmd_args.sync_path, '')
-            display_title = self.remote.get_custom_set_title(photo_set)
+            photo_dir = self.remote.get_custom_set_title(photo_set)
+            display_title = photo_dir
+            if self.cmd_args.iphoto:
+                folder = 'iPhoto'
+                display_title = folder
+
             logger.info('Getting photos in set [%s]' % display_title)
             photos_remote = self.remote.get_photos_in_set(folder)
             logger.info('Found %s photos' % len(photos_remote))
 
             for photo, file_stat in sorted(photo_sets[photo_set]):
+                file_path = os.path.join(photo_set, photo)
+                if self.cmd_args.iphoto:
+                    photo = photo_dir + '__' + photo
+
                 photo_lowercase = photo.lower()
                 photo_lowercase_no_extension = os.path.splitext(photo_lowercase)[0]
 
@@ -165,7 +174,6 @@ class Sync(object):
                     if file_stat.st_size >= 1073741824:
                         logger.error('Skipped [%s] over size limit' % photo)
                         continue
-                    file_path = os.path.join(photo_set, photo)                        
                     photo_id = self.remote.upload(file_path, photo, folder)
                     if photo_id:
                         photos_remote[photo] = photo_id

@@ -55,7 +55,7 @@ def main():
                         help='token username')  # token username argument for api
     parser.add_argument('--add-photo-prefix', type=str,
                         help='Add a specific prefix to the remote files whose local files have that prefix')
-    parser.add_argument('--iphoto', type=str,
+    parser.add_argument('--iphoto', action='store_true',
                         help='Backup iPhoto Masters folder')
     parser.add_argument('--keyword', action='append', type=str,
                         help='only upload files matching this keyword')
