@@ -159,8 +159,14 @@ class Remote(object):
 
                 desc = desc.encode('utf-8') if isinstance(desc, unicode) else desc
                 if desc:
+                    if desc.startswith("_Photos/"):
+                        desc = desc.replace("_Photos/", "")
+                        forceUpdateDesc = True
+
                     self.photo_sets_map[desc] = current_set['id']
                     title = self.get_custom_set_title(self.cmd_args.sync_path + desc)
+
+
                     if self.cmd_args.update_custom_set:
                         if title != current_set['title']['_content'] or forceUpdateDesc:
                             update_args = self.args.copy()
@@ -203,7 +209,7 @@ class Remote(object):
                 self.add_to_photo_set(photo_id, folder)
                 return photo_id
             except Exception as e:
-                logger.warning("Retrying upload of %s/%s after error: %s" % (folder, photo, e))
+                logger.warning("Retrying upload of %s/%s after error: %s" % (folder, photo, e.message))
         logger.error("Failed upload of %s/%s after %d retries" % (folder, photo, RETRIES))
 
     def download(self, url, path):
