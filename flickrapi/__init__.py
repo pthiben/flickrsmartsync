@@ -49,6 +49,11 @@ import urllib2
 import os.path
 import logging
 import webbrowser
+import sys
+import mmap
+import os
+import shutil
+import tempfile
 
 # Smartly import hashlib and fall back on md5
 try:
@@ -206,6 +211,8 @@ class FlickrAPI(object):
         self.default_format = format
 
         self.__handler_cache = {}
+
+        self.file_mm = {}
 
         if token:
             # Use a memory-only token cache
@@ -606,11 +613,26 @@ class FlickrAPI(object):
             part = Part({'name': arg}, value)
             body.attach(part)
 
-        filepart = FilePart({'name': 'photo'}, filename, 'image/jpeg')
-        body.attach(filepart)
+        with tempfile.TemporaryFile() as temp_file:
+            with open(filename, "rb") as source_file:
+                filepart = FilePart({'name': 'photo'}, filename, self.file_mm, 'image/jpeg')
+                bodyStr = body.get_data()
+                bodyStr += ['--' + body.boundary]
+                bodyStr += filepart.render()
+                temp_file.write('\r\n'.join(bodyStr))
 
-        return self.__wrap_in_parser(self.__send_multipart, format,
-                                     url, body, callback)
+                shutil.copyfileobj(source_file, temp_file)
+                temp_file.write('\r\n--' + body.boundary + "--")
+
+                temp_file.seek(0)
+
+                self.file_mm = mmap.mmap(temp_file.fileno(), 0, prot=mmap.PROT_READ)
+                retvalue = self.__wrap_in_parser(self.__send_multipart, format,
+                                                 url, body, callback)
+                self.file_mm.close()
+                temp_file.close()
+
+                return retvalue
 
     def __send_multipart(self, url, body, progress_callback=None):
         '''Sends a Multipart object to an URL.
@@ -620,7 +642,8 @@ class FlickrAPI(object):
 
         LOG.debug("Uploading to %s" % url)
         request = urllib2.Request(url)
-        request.add_data(str(body))
+        # request.add_data(str(body))
+        request.add_data(self.file_mm)
 
         (header, value) = body.header()
         request.add_header(header, value)

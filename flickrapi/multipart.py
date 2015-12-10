@@ -56,13 +56,12 @@ class FilePart(Part):
     <flickrapi.multipart.FilePart object at 0x...>
     '''
 
-    def __init__(self, parameters, filename, content_type):
+    def __init__(self, parameters, filename, mm, content_type):
         parameters['filename'] = filename
-
-        imagefile = open(filename, 'rb')
-        payload = imagefile.read()
-        imagefile.close()
-
+        payload = ""
+        # imagefile = open(filename, 'rb')
+        # payload = imagefile.read()
+        # imagefile.close()
         Part.__init__(self, parameters, payload, content_type)
 
 
@@ -88,16 +87,16 @@ class Multipart(object):
 
         self.parts.append(part)
 
-    def __str__(self):
+    def get_data(self):
         '''Renders the Multipart'''
 
         lines = []
         for part in self.parts:
             lines += ['--' + self.boundary]
             lines += part.render()
-        lines += ['--' + self.boundary + "--"]
 
-        return '\r\n'.join(lines)
+        # lines += ['--' + self.boundary + "--"]
+        return lines
 
     def header(self):
         '''Returns the top-level HTTP header of this multipart'''
